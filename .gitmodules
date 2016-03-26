@@ -1,0 +1,3 @@
+[submodule "MkrAlarm-Win10/remote-wiring"]
+	path = MkrAlarm-Win10/remote-wiring
+	url = https://github.com/ms-iot/remote-wiring.git

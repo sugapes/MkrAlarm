@@ -1,0 +1,4 @@
+# Ignore the wifiCredentials.h file since it only contains the defines
+# for MY_SSID and MY_PASSPHRASE and they should not be included int the
+# distribution to keep those values secret
+wifiCredentials.h
