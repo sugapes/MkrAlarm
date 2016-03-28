@@ -5,6 +5,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using Microsoft.Maker.RemoteWiring;
+using Microsoft.Maker.Firmata;
 using Microsoft.Maker.Serial;
 
 namespace mkralarm_win10
@@ -15,6 +16,12 @@ namespace mkralarm_win10
     sealed partial class App : Application
     {
         public static IStream Connection
+        {
+            get;
+            set;
+        }
+
+        public static UwpFirmata Firmata
         {
             get;
             set;

@@ -40,7 +40,7 @@
                             </Button>
                             <Button Name="AnalogButton" Grid.Column="2" Height="50"  Width="84" Margin="0, 0, 0, 0" Click="MenuButton_Click" 
                         Background="#E6E6E6" BorderThickness="0" PointerEntered="MenuButton_Enter" PointerExited="MenuButton_Exit">
-                                <TextBlock x:Name="AnalogText" HorizontalAlignment="Stretch" TextAlignment="Center" FontSize="12">Analog</TextBlock>
+                                <TextBlock x:Name="AnalogText" HorizontalAlignment="Stretch" TextAlignment="Center" FontSize="12" Margin="-0.2,-0.2,0.2,0" Height="16" VerticalAlignment="Top">Analog</TextBlock>
                             </Button>
                             <Button Name="PWMButton" Grid.Column="3" Height="50"  Width="84" Margin="0, 0, 0, 0" Click="MenuButton_Click" 
                         Background="#E6E6E6" BorderThickness="0" PointerEntered="MenuButton_Enter" PointerExited="MenuButton_Exit">
@@ -48,7 +48,7 @@
                             </Button>
                             <Button Name="AboutButton" Grid.Column="4" Height="50"  Width="84" Margin="0, 0, 0, 0" Click="MenuButton_Click" 
                         Background="#E6E6E6" BorderThickness="0" PointerEntered="MenuButton_Enter" PointerExited="MenuButton_Exit">
-                                <TextBlock x:Name="AboutText" HorizontalAlignment="Stretch" TextAlignment="Center" FontSize="12">About</TextBlock>
+                                <TextBlock x:Name="AboutText" TextAlignment="Center" FontSize="12" Margin="0.4,-0.2,-0.6,0.2">About</TextBlock>
                             </Button>
                         </Grid>
                     </StackPanel>
@@ -86,7 +86,7 @@
                     <TextBlock Width="Auto" MaxWidth="430" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">Use the features 
                         on this page to control the digital pins on your Arduino board.  For more advanced Arduino boards, not all digital pins may appear.</TextBlock>
                 </StackPanel>
-                
+
                 <StackPanel Grid.Row="1" x:Name="TableHeaders" Margin="34, 26, 0, 0" Orientation="Horizontal">
                     <TextBlock Width="148" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" FontWeight="SemiBold" Margin="0, 0, 0, 0">Pin number</TextBlock>
                     <TextBlock Width="160" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" FontWeight="SemiBold" Margin="0, 0, 0, 0">Input/Output</TextBlock>
@@ -159,31 +159,28 @@
 
                 <StackPanel Grid.Row="0" x:Name="About1" Margin="30, 30, 0, 0">
                     <TextBlock HorizontalAlignment="Left" TextAlignment="Left" FontSize="32" FontWeight="ExtraLight" Margin="3, -5, 0, 0">About</TextBlock>
-                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">This application is intended
-                        to show off the power of Windows Remote Arduino, an open source library that allows any Windows device to control an Arduino via USB, Bluetooth, or a network. Once connected, the library
-                        allows users to control the GPIO, ADC, PWM, I2C, and other capabilities of an Arduino board from any Windows 10 device. This application (also open source) will allow you to experiment with
-                        the GPIO, ADC, and PWM capabilities of the library without writing a single line of code!</TextBlock>
+                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">This application is used to connect to
+                        the MkrLamp device and configure it. The MkrLamp is a DIY hardware device that consists of an Internet connected alarm clock with an RGB lamp. When the alarm time is reached the RGB lamp
+                        slowly fades in and simulates the sun rising. At the same time it can control a stereo device using IR codes to also slowly fade in some music. With this application we can connect to it
+                        and configure alarm times and other settings. Since it is a Windows 10 universal app it can be deployed on any kind of windows 10 device like phones, tablets, and PC.</TextBlock>
                 </StackPanel>
 
                 <StackPanel Grid.Row="1" x:Name="About2" Margin="30, 8, 0, 0">
-                    <TextBlock Width="Auto" MaxWidth="430" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">Setup is quick and easy – 
-                        simply upload the StandardFirmata sketch (included with the Arduino IDE) to the board and start this application to begin controlling pins on their microcontroller.
-                        Depending on your hardware configuration, you may need to make slight modifications to the StandardFirmata sketch to use the correct baud rate and Serial class.</TextBlock>
+                    <TextBlock Width="Auto" MaxWidth="430" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">This application is an horrible hack
+                        of the Windows Remote Arduino Experience, a Universal Windows Application which will allow you to experiment with most of the functionality of Windows Remote Arduino a library that allows
+                        the remote control of an Arduino (or similar microcontroller devices).</TextBlock>
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" x:Name="About3" Margin="30, 8, 0, 30">
-                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">For additional questions, head over to 
-                        <Hyperlink NavigateUri="http://windowsondevices.com">WindowsOnDevices.com</Hyperlink> where you’ll find a <Hyperlink NavigateUri="http://ms-iot.github.io/content/en-US/win10/WRA.htm">beginner’s tutorial</Hyperlink> on the "Getting Started" page to help set up your Arduino and this program.  Once you’ve covered the basics, there are additional 
-                        samples on the site to help you quickly start creating your own projects!</TextBlock>
-                </StackPanel>
-
-                <StackPanel Grid.Row="3" x:Name="About4" Margin="30, 8, 0, 30" Orientation="Vertical">
                     <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">The Windows Remote Arduino source code
                         is available at:</TextBlock>
                     <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0"><Hyperlink NavigateUri="https://github.com/ms-iot/remote-wiring">https://github.com/ms-iot/remote-wiring</Hyperlink></TextBlock>
-                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">This application's source code
+                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">The Windows Remote Arduino Experience source code
                         is available at:</TextBlock>
                     <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0"><Hyperlink NavigateUri="https://github.com/ms-iot/remote-wiring-experience">https://github.com/ms-iot/remote-wiring-experience</Hyperlink></TextBlock>
+                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">This application's source code
+                        is available at:</TextBlock>
+                    <TextBlock Width="Auto" MaxWidth="450" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0"><Hyperlink NavigateUri="https://github.com/sugapes/MkrAlarm">https://github.com/sugapes/MkrAlarm</Hyperlink></TextBlock>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

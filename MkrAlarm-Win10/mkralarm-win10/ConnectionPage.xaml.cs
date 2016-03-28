@@ -8,6 +8,7 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using Communication;
 using Microsoft.Maker.Serial;
+using Microsoft.Maker.Firmata;
 using Microsoft.Maker.RemoteWiring;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -34,7 +35,6 @@ namespace mkralarm_win10
         public ConnectionPage()
         {
             this.InitializeComponent();
-            ConnectionMethodComboBox.SelectionChanged += ConnectionComboBox_SelectionChanged;
         }
 
         protected override void OnNavigatedTo( NavigationEventArgs e )
@@ -52,123 +52,23 @@ namespace mkralarm_win10
             wire.Source = wireBitmap;
             WireStack.Children.Add(wire);
 
-            if ( ConnectionList.ItemsSource == null )
-            {
-                ConnectMessage.Text = "Select an item to connect to.";
-                RefreshDeviceList();
-            }
+            // Set default values for host address and port on text boxes
+            NetworkHostNameTextBox.Text = "192.168.10.99";
+            NetworkPortTextBox.Text = "3030";
+
+            RefreshDeviceList();
         }
 
         private void RefreshDeviceList()
         {
-            //invoke the listAvailableDevicesAsync method of the correct Serial class. Since it is Async, we will wrap it in a Task and add a llambda to execute when finished
-            Task<DeviceInformationCollection> task = null;
-            if( ConnectionMethodComboBox.SelectedItem == null )
-            {
-                ConnectMessage.Text = "Select a connection method to continue.";
-                return;
-            }
-
-            switch( ConnectionMethodComboBox.SelectedItem as String )
-            {
-                default:
-                case "Bluetooth":
-                    ConnectionList.Visibility = Visibility.Visible;
-                    DevicesText.Visibility = Visibility.Visible;
-                    NetworkHostNameTextBox.IsEnabled = false;
-                    NetworkPortTextBox.IsEnabled = false;
-                    BaudRateComboBox.IsEnabled = true;
-                    NetworkHostNameTextBox.Text = "";
-                    NetworkPortTextBox.Text = "";
-
-                    //create a cancellation token which can be used to cancel a task
-                    cancelTokenSource = new CancellationTokenSource();
-                    cancelTokenSource.Token.Register( () => OnConnectionCancelled() );
-
-                    task = BluetoothSerial.listAvailableDevicesAsync().AsTask<DeviceInformationCollection>( cancelTokenSource.Token );
-                    break;
-
-                case "USB":
-                    ConnectionList.Visibility = Visibility.Visible;
-                    DevicesText.Visibility = Visibility.Visible;
-                    NetworkHostNameTextBox.IsEnabled = false;
-                    NetworkPortTextBox.IsEnabled = false;
-                    BaudRateComboBox.IsEnabled = true;
-                    NetworkHostNameTextBox.Text = "";
-                    NetworkPortTextBox.Text = "";
-
-                    //create a cancellation token which can be used to cancel a task
-                    cancelTokenSource = new CancellationTokenSource();
-                    cancelTokenSource.Token.Register( () => OnConnectionCancelled() );
-
-                    task = UsbSerial.listAvailableDevicesAsync().AsTask<DeviceInformationCollection>( cancelTokenSource.Token );
-                    break;
-
-                case "Network":
-                    ConnectionList.Visibility = Visibility.Collapsed;
-                    DevicesText.Visibility = Visibility.Collapsed;
-                    NetworkHostNameTextBox.IsEnabled = true;
-                    NetworkPortTextBox.IsEnabled = true;
-                    BaudRateComboBox.IsEnabled = false;
-                    ConnectMessage.Text = "Enter a host and port to connect.";
-                    task = null;
-                    break;
-            }
-
-            if( task != null )
-            {
-                //store the returned DeviceInformation items when the task completes
-                task.ContinueWith( listTask =>
-                {
-                    //store the result and populate the device list on the UI thread
-                    var action = Dispatcher.RunAsync( Windows.UI.Core.CoreDispatcherPriority.Normal, new Windows.UI.Core.DispatchedHandler( () =>
-                    {
-                        Connections connections = new Connections();
-
-                        var result = listTask.Result;
-                        if( result == null || result.Count == 0 )
-                        {
-                            ConnectMessage.Text = "No items found.";
-                            ConnectionList.Visibility = Visibility.Collapsed;
-                        }
-                        else
-                        {
-                            foreach( DeviceInformation device in result )
-                            {
-                                connections.Add( new Connection( device.Name, device ) );
-                            }
-                            ConnectMessage.Text = "Select an item and press \"Connect\" to connect.";
-                        }
-
-                        ConnectionList.ItemsSource = connections;
-                    } ) );
-                } );
-            }
+            NetworkHostNameTextBox.IsEnabled = true;
+            NetworkPortTextBox.IsEnabled = true;
+            ConnectMessage.Text = "Enter a host and port to connect.";
         }
 
         /****************************************************************
          *                       UI Callbacks                           *
          ****************************************************************/
-
-        /// <summary>
-        /// This function is called if the selection is changed on the Connection combo box
-        /// </summary>
-        /// <param name="sender">The object invoking the event</param>
-        /// <param name="e">Arguments relating to the event</param>
-        private void ConnectionComboBox_SelectionChanged( object sender, SelectionChangedEventArgs e )
-        {
-            RefreshDeviceList();
-        }
-
-        /// <summary>
-        /// Called if the Refresh button is pressed
-        /// </summary>
-        /// <param name="sender">The object invoking the event</param>
-        /// <param name="e">Arguments relating to the event</param>
-        private void RefreshButton_Click( object sender, RoutedEventArgs e )
-        {
-            RefreshDeviceList();
-        }
 
         /// <summary>
         /// Called if the Cancel button is pressed
@@ -189,64 +89,37 @@ namespace mkralarm_win10
         {
             //disable the buttons and set a timer in case the connection times out
             SetUiEnabled( false );
+            
+            //create our communication object
+            string host = NetworkHostNameTextBox.Text;
+            string port = NetworkPortTextBox.Text;
+            ushort portnum = 0;
 
-            DeviceInformation device = null;
-            if( ConnectionList.SelectedItem != null )
+            if (Uri.CheckHostName(host) == UriHostNameType.Unknown)
             {
-                var selectedConnection = ConnectionList.SelectedItem as Connection;
-                device = selectedConnection.Source as DeviceInformation;
-            }
-            else if( ( ConnectionMethodComboBox.SelectedItem as string ) != "Network" )
-            {
-                //if they haven't selected an item, but have chosen "usb" or "bluetooth", we can't proceed
-                ConnectMessage.Text = "You must select an item to proceed.";
-                SetUiEnabled( true );
+                ConnectMessage.Text = "You have entered an invalid host or IP.";
                 return;
             }
 
-            //determine the selected baud rate
-            uint baudRate = Convert.ToUInt32( ( BaudRateComboBox.SelectedItem as string ) );
-            
-            //use the selected device to create our communication object
-            switch( ConnectionMethodComboBox.SelectedItem as string )
+            if (!ushort.TryParse(port, out portnum))
             {
-                default:
-                case "Bluetooth":
-
-                    App.Connection = new BluetoothSerial( device );
-                    break;
-
-                case "USB":
-
-                    App.Connection = new UsbSerial( device );
-                    break;
-
-                case "Network":
-                    string host = NetworkHostNameTextBox.Text;
-                    string port = NetworkPortTextBox.Text;
-                    ushort portnum = 0;
-
-                    if (Uri.CheckHostName(host) == UriHostNameType.Unknown)
-                    {
-                        ConnectMessage.Text = "You have entered an invalid host or IP.";
-                        return;
-                    }
-
-                    if (!ushort.TryParse(port, out portnum))
-                    {
-                        ConnectMessage.Text = "You have entered an invalid port number.";
-                        return;
-                    }
-
-                    App.Connection = new NetworkSerial( new Windows.Networking.HostName( host ), portnum );
-                    break;
+                ConnectMessage.Text = "You have entered an invalid port number.";
+                return;
             }
 
-            App.Arduino = new RemoteDevice( App.Connection );
+            App.Connection = new NetworkSerial( new Windows.Networking.HostName( host ), portnum );
+
+            App.Firmata = new UwpFirmata();
+
+            App.Arduino = new RemoteDevice( App.Firmata );
             App.Arduino.DeviceReady += OnDeviceReady;
             App.Arduino.DeviceConnectionFailed += OnConnectionFailed;
 
-            App.Connection.begin( baudRate, SerialConfig.SERIAL_8N1 );
+            //tell the connection to begin, the arguments (baud and serialconfig) don't matter for the NetworkSerial class
+            App.Connection.begin( 57600, SerialConfig.SERIAL_8N1 );
+
+            //attach the connection to the UwpFirmata object with begin()
+            App.Firmata.begin( App.Connection );
 
             //start a timer for connection timeout
             timeout = new DispatcherTimer();
@@ -310,7 +183,6 @@ namespace mkralarm_win10
 
         private void SetUiEnabled( bool enabled )
         {
-            RefreshButton.IsEnabled = enabled;
             ConnectButton.IsEnabled = enabled;
             CancelButton.IsEnabled = !enabled;
         }
