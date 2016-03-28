@@ -622,6 +622,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
         default:
           break;
       }
+      DEBUG_PRINTLN( "I2C_REQUEST" );
       break;
     case I2C_CONFIG:
       delayTime = (argv[0] + (argv[1] << 7));
@@ -634,6 +635,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
         enableI2CPins();
       }
 
+      DEBUG_PRINTLN( "I2C_CONFIG" );
       break;
     case SERVO_CONFIG:
       if (argc > 4) {
@@ -650,6 +652,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
           setPinModeCallback(pin, PIN_MODE_SERVO);
         }
       }
+      DEBUG_PRINTLN( "SERVO_CONFIG" );
       break;
     case SAMPLING_INTERVAL:
       if (argc > 1) {
@@ -660,6 +663,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
       } else {
         //Firmata.sendString("Not enough data");
       }
+      DEBUG_PRINTLN( "SAMPLING_INTERVAL" );
       break;
     case EXTENDED_ANALOG:
       if (argc > 1) {
@@ -668,6 +672,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
         if (argc > 3) val |= (argv[3] << 14);
         analogWriteCallback(argv[0], val);
       }
+      DEBUG_PRINTLN( "EXTENDED_ANALOG" );
       break;
     case CAPABILITY_QUERY:
       Firmata.write(START_SYSEX);
@@ -703,6 +708,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
         Firmata.write(127);
       }
       Firmata.write(END_SYSEX);
+
+      DEBUG_PRINTLN( "CAPABILITY_QUERY" );
       break;
     case PIN_STATE_QUERY:
       if (argc > 0) {
@@ -718,6 +725,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
         }
         Firmata.write(END_SYSEX);
       }
+      DEBUG_PRINTLN( "PIN_STATE_QUERY" );
       break;
     case ANALOG_MAPPING_QUERY:
       Firmata.write(START_SYSEX);
@@ -726,12 +734,14 @@ void sysexCallback(byte command, byte argc, byte *argv)
         Firmata.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
       }
       Firmata.write(END_SYSEX);
+      DEBUG_PRINTLN( "ANALOG_MAPPING_QUERY" );
       break;
 
     case SERIAL_MESSAGE:
 #ifdef FIRMATA_SERIAL_FEATURE
       serialFeature.handleSysex(command, argc, argv);
 #endif
+      DEBUG_PRINTLN( "SERIAL_MESSAGE" );
       break;
   }
 }

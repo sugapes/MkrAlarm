@@ -72,7 +72,7 @@ char ssid[] = MY_SSID;
 // STEP 3 [OPTIONAL for all boards and shields]
 // if you want to use a static IP (v4) address, uncomment the line below. You can also change the IP.
 // if this line is commented out, the WiFi shield will attempt to get an IP from the DHCP server
-// #define STATIC_IP_ADDRESS 192,168,1,113
+#define STATIC_IP_ADDRESS 192,168,10,99
 
 // STEP 4 [REQUIRED for all boards and shields]
 // define your port number here, you will need this to open a TCP connection to your Arduino
