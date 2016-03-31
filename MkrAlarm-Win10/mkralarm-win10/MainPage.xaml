@@ -77,23 +77,30 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="48"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" x:Name="Description" Margin="30, 30, 0, 0">
-                    <TextBlock HorizontalAlignment="Left" TextAlignment="Left" FontSize="32" FontWeight="ExtraLight" Margin="3, -5, 0, 0">Digital</TextBlock>
-                    <TextBlock Width="Auto" MaxWidth="430" Height="Auto" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="4, 8, 0, 0">Use the features 
+                <StackPanel Grid.Row="0" x:Name="Description" Margin="10, 10, 0, 0">
+                    <TextBlock HorizontalAlignment="Left" TextAlignment="Left" FontSize="24" FontWeight="ExtraLight" Margin="0, 10, 0, 0">Current Time</TextBlock>
+                    <TextBlock HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,0" x:Name="DisplayTime">
+                        Current date and time displayed here
+                    </TextBlock>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" x:Name="AlarmsSet" Margin="10,10,0,0"  Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <TextBlock Width="400" HorizontalAlignment="Left" TextAlignment="Left" TextWrapping="Wrap" FontSize="14" Margin="0, 0, 0, 0" x:Name="DigitalMessage">Use the features 
                         on this page to control the digital pins on your Arduino board.  For more advanced Arduino boards, not all digital pins may appear.</TextBlock>
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" x:Name="TableHeaders" Margin="34, 26, 0, 0" Orientation="Horizontal">
+                <StackPanel Grid.Row="2" x:Name="TableHeaders" Margin="10, 10, 0, 0" Orientation="Horizontal">
                     <TextBlock Width="148" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" FontWeight="SemiBold" Margin="0, 0, 0, 0">Pin number</TextBlock>
                     <TextBlock Width="160" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" FontWeight="SemiBold" Margin="0, 0, 0, 0">Input/Output</TextBlock>
                     <TextBlock Width="100" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" FontWeight="SemiBold" Margin="0, 0, 0, 0">Value</TextBlock>
                 </StackPanel>
 
-                <StackPanel Grid.Row="2" Margin="34,18,34,0" x:Name="DigitalPins" Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                <StackPanel Grid.Row="3" Margin="10,10,0,0" x:Name="DigitalPins" Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Center">
                 </StackPanel>
             </Grid>
         </ScrollViewer>

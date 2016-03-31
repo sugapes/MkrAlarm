@@ -9,9 +9,11 @@ using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Notifications;
 using Windows.UI.Xaml.Controls.Primitives;
 using Microsoft.Maker.RemoteWiring;
+using Microsoft.Maker.Firmata;
 using System.Diagnostics;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Text;
+using Windows.Storage.Streams;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -54,6 +56,17 @@ namespace mkralarm_win10
         private bool navigated = false;
         private bool resetVoltage = false;
 
+        private UwpFirmata firmata;
+
+        //firmata SYSEX new commands
+        const byte ALARMS_QUERY = 0x00;
+        const byte ALARMS_REPLY = 0x01;
+        const byte ALARM_SET = 0x02;
+        const byte DATE_STRING_REQUEST = 0x03;
+
+        private Alarms alarms;
+        private string firmataMessage;
+
         public MainPage()
         {
             this.InitializeComponent();
@@ -83,10 +96,21 @@ namespace mkralarm_win10
             arduino.DigitalPinUpdated += Arduino_OnDigitalPinUpdated;
             arduino.AnalogPinUpdated += Arduino_OnAnalogPinUpdated;
 
-            for( byte i = 0; i < digitalPins.Count; ++i )
+            firmata = App.Firmata;
+
+            firmata.SysexMessageReceived += Firmata_OnSysexMessageReceived;
+            firmata.StringMessageReceived += Firmata_OnStringMessageReceived;
+
+            alarms = new Alarms(10); // FIXME: fixed for now - matches arduino sketch length
+
+            Firmata_AlarmsQuery();
+            Firmata_DateStringRequest();
+
+            for ( byte i = 0; i < digitalPins.Count; ++i )
             {
                 UpdateDigitalPinIndicators( digitalPins[i] );
             }
+            
         }
 
 
@@ -937,6 +961,9 @@ namespace mkralarm_win10
         {
             var button = sender as Button;
 
+            Firmata_AlarmsQuery();
+            Firmata_DateStringRequest();
+
             ResetVisibility();
 
             int nextPage = 0;
@@ -961,7 +988,7 @@ namespace mkralarm_win10
                     {
                         navigated = true;
                         UpdateDigitalPinIndicators( pin );
-                    }
+                    }                    
 
                     nextPage = 0;
 
@@ -1010,6 +1037,8 @@ namespace mkralarm_win10
                     break;
             }
 
+            
+
             //track time spent on page navigated away from
             navigated = false;
             currentPage = nextPage;
@@ -1048,6 +1077,147 @@ namespace mkralarm_win10
             AnalogText.Foreground = new SolidColorBrush( Windows.UI.Colors.Black );
             PWMText.Foreground = new SolidColorBrush( Windows.UI.Colors.Black );
             AboutText.Foreground = new SolidColorBrush( Windows.UI.Colors.Black );
+        }
+
+        //******************************************************************************
+        //* Firmata SysEx Support Functions
+        //******************************************************************************
+
+        private void Firmata_AlarmsQuery()
+        {
+            firmata.sendSysex(ALARMS_QUERY, System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBuffer.Create(0));
+        }
+
+        private void Firmata_DateStringRequest()
+        {
+            firmata.sendSysex(DATE_STRING_REQUEST, System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBuffer.Create(0));
+        }
+
+        public void Firmata_OnSysexMessageReceived( UwpFirmata caller, SysexCallbackEventArgs argv )
+        {
+            byte command = argv.getCommand();
+            
+            switch (command)
+            {
+                case ALARMS_REPLY:
+                    byte[] rawBytes = new byte[argv.getDataBuffer().Length];
+                    using (var reader = Windows.Storage.Streams.DataReader.FromBuffer(argv.getDataBuffer()))
+                    {
+                        reader.ReadBytes(rawBytes);
+                        //buffius = reader.ReadString(argv.getDataBuffer().Length) + ":::" + argv.getDataBuffer().Length;
+                    }
+                    alarms.SetAlarms(rawBytes);
+
+                    //buffius = Encoding.ASCII.GetString(rawBytes);
+                    //buffius = reader.ReadString(argv.getDataBuffer().Length) + ":::" + argv.getDataBuffer().Length;
+                    var action = Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, new Windows.UI.Core.DispatchedHandler(() =>
+                    {
+                        DigitalMessage.Text = "Alarms List:\n" + alarms.ToString();
+                    }));
+                    break;
+            }
+        }
+
+        // Process
+        public void Firmata_OnStringMessageReceived(UwpFirmata caller, StringCallbackEventArgs argv)
+        {
+            firmataMessage = argv.getString();
+
+            var action = Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, new Windows.UI.Core.DispatchedHandler(() =>
+            {
+                DisplayTime.Text = firmataMessage;
+            }));
+        }
+
+        //******************************************************************************
+        //* Alarms Class (stores currently set alarms)
+        //******************************************************************************
+
+        // A single alarm entry
+        class Alarm
+        {
+            public byte hours { get; set; }
+            public byte minutes { get; set; }
+            public byte weekDays { get; set; }
+
+            public Alarm()
+            {
+                hours = 0;
+                minutes = 0;
+                weekDays = 0;
+            }
+
+            public Alarm(byte h, byte m, byte w)
+            {
+                hours = h;
+                minutes = m;
+                weekDays = w;
+            }
+
+            public override String ToString()
+            {
+                return 
+                    ((hours < 10) ? "0" : "") + hours + ":" + 
+                    ((minutes < 10) ? "0" : "") + minutes + " " +
+                    ((weekDays & 0x40) != 0x00 ? "M" : "-") +
+                    ((weekDays & 0x20) != 0x00 ? "T" : "-") +
+                    ((weekDays & 0x10) != 0x00 ? "W" : "-") +
+                    ((weekDays & 0x08) != 0x00 ? "T" : "-") +
+                    ((weekDays & 0x04) != 0x00 ? "F" : "-") +
+                    ((weekDays & 0x02) != 0x00 ? "S" : "-") +
+                    ((weekDays & 0x01) != 0x00 ? "S" : "-");
+            }
+        }
+
+        // All alarms that can be set
+        class Alarms
+        {
+            private int totalAlarms;
+            private Alarm[] alarms;
+            
+            public Alarms(int nrAlarms)
+            {
+                totalAlarms = nrAlarms;
+                alarms = new Alarm[nrAlarms];
+                for (int i = 0; i < totalAlarms; i++)
+                    alarms[i] = new Alarm();
+            }
+
+            public void SetAlarms(byte[] alarmsReply)
+            {
+                int byteNr = 0;
+                for(int i = 0; i < totalAlarms; i++)
+                {
+                    if (byteNr >= alarmsReply.Length) break;
+                    alarms[i].hours = alarmsReply[byteNr++];
+                    if (byteNr >= alarmsReply.Length) break;
+                    alarms[i].minutes = alarmsReply[byteNr++];
+                    if (byteNr >= alarmsReply.Length) break;
+                    alarms[i].weekDays = alarmsReply[byteNr++];
+                }
+            }
+
+            public void SetAlarm(byte nr, byte hours, byte minutes, byte weekDays)
+            {
+                alarms[nr].hours = hours;
+                alarms[nr].minutes = minutes;
+                alarms[nr].weekDays = weekDays;
+            }
+
+            public Alarm GetAlarm(byte nr)
+            {
+                return alarms[nr];
+            }
+
+            public override String ToString()
+            {
+                string asString = "";
+                for (int i = 0; i < totalAlarms; i++)
+                {
+                    asString += alarms[i].ToString() + "\n";
+                }
+                return asString;
+            }
         }
     }
 }

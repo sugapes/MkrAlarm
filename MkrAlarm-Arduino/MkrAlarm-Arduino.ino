@@ -73,6 +73,10 @@
 #include <Servo.h>
 #include <Wire.h>
 #include <Firmata.h>
+#include <WiFi101.h>
+#include <WiFiUdp.h>
+#include <RTCZero.h>
+#include <time.h>
 
 /*
  * Uncomment the #define SERIAL_DEBUG line below to receive serial output messages relating to your
@@ -129,6 +133,21 @@ SerialFirmata serialFeature;
 #ifdef STATIC_IP_ADDRESS
 IPAddress local_ip(STATIC_IP_ADDRESS);
 #endif
+
+/* RTC object to track time */
+RTCZero rtc;
+
+/* A UDP instance to let us send and receive packets over UDP */
+WiFiUDP Udp;
+
+/* Used for NTP */
+unsigned int localPort = 2390;      // local port to listen for UDP packets
+IPAddress timeServer(129, 6, 15, 30); // time.nist.gov NTP server
+const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
+byte packetBuffer[ NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
+const int GMT = 2; //change this to adapt it to your time zone
+
+String dateString;
 
 int wifiConnectionAttemptCounter = 0;
 int wifiStatus = WL_IDLE_STATUS;
@@ -785,7 +804,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
       DEBUG_PRINTLN( "ALARMS_QUERY" );
       break;
     case DATE_STRING_REQUEST:
-      Firmata.sendString("current time string");
+      updateDateString();
+      Firmata.sendString(dateString.c_str());
       DEBUG_PRINTLN( "DATE_STRING_REQUEST" );
       break;
   }
@@ -908,6 +928,88 @@ void printWifiStatus() {
   }
 }
 
+unsigned long readLinuxEpochUsingNetworkTimeProtocol()
+{
+  unsigned long epoch = 0;
+  unsigned int maxRetries = 5;
+
+  Udp.begin(localPort);
+
+  do {
+    sendNTPpacket(timeServer); // send an NTP packet to a time server
+    // wait to see if a reply is available
+    delay(3000);
+
+    if ( Udp.parsePacket() ) {
+      DEBUG_PRINTLN("NTP time received");
+      // We've received a packet, read the data from it
+      Udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer
+
+      //the timestamp starts at byte 40 of the received packet and is four bytes,
+      // or two words, long. First, esxtract the two words:
+
+      unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+      unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+      // combine the four bytes (two words) into a long integer
+      // this is NTP time (seconds since Jan 1 1900):
+      unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+      // now convert NTP time into everyday time:
+      // Unix time starts on Jan 1 1970. In seconds, that's 2208988800:
+      const unsigned long seventyYears = 2208988800UL;
+      // subtract seventy years:
+      epoch = secsSince1900 - seventyYears;
+    } else {
+      DEBUG_PRINTLN("Nothing received");
+    }
+  } while ((epoch == 0) && (--maxRetries > 0));
+
+  Udp.stop();
+
+  return epoch;
+}
+
+// send an NTP request to the time server at the given address
+unsigned long sendNTPpacket(IPAddress& address)
+{
+  //Serial.println("1");
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  //Serial.println("2");
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+
+  //Serial.println("3");
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+  Udp.beginPacket(address, 123); //NTP requests are to port 123
+  //Serial.println("4");
+  Udp.write(packetBuffer, NTP_PACKET_SIZE);
+  //Serial.println("5");
+  Udp.endPacket();
+  //Serial.println("6");
+}
+
+void updateDateString()
+{
+  time_t rawtime;
+  struct tm * timeinfo;
+
+  rawtime = (time_t) rtc.getEpoch();
+  timeinfo = localtime (&rawtime);
+  dateString = asctime(timeinfo);
+}
+
 void setup()
 {
   /*
@@ -918,7 +1020,7 @@ void setup()
   /*
    * This statement will clarify how a connection is being made
    */
-  DEBUG_PRINT( "StandardFirmataWiFi will attempt a WiFi connection " );
+  DEBUG_PRINT( "Attempt a WiFi connection " );
 #if defined(WIFI_101)
   DEBUG_PRINTLN( "using the WiFi 101 library." );
 #elif defined(ARDUINO_WIFI_SHIELD)
@@ -974,6 +1076,20 @@ void setup()
 
   DEBUG_PRINTLN( "WiFi setup done" );
   printWifiStatus();
+
+  /*
+   * RTC SETUP
+   */
+  rtc.begin(); // initialize RTC 24H format
+
+  unsigned long epoch = readLinuxEpochUsingNetworkTimeProtocol();
+  if (epoch > 0) {
+    rtc.setEpoch(epoch+GMT*3600U);
+  } else {
+    /* dummy date - for debug only */
+    rtc.setTime(22, 21, 20);
+    rtc.setDate(1, 3, 16);
+  }
 
   /*
    * FIRMATA SETUP
