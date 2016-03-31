@@ -104,6 +104,15 @@
 #define I2C_MAX_QUERIES             8
 #define I2C_REGISTER_NOT_SPECIFIED  -1
 
+// user defined SysEx commands
+#define ALARMS_QUERY                0x00
+#define ALARMS_REPLY                0x01
+#define ALARM_SET                   0x02
+#define DATE_STRING_REQUEST         0x03
+
+// maximum number of alarms than can be defined
+#define MAX_ALARMS                  10
+
 // the minimum interval for sampling analog input
 #define MINIMUM_SAMPLING_INTERVAL   1
 
@@ -182,6 +191,16 @@ byte wireRead(void)
   return Wire.receive();
 #endif
 }
+
+/* alarm data */
+struct alarm_info {
+  byte hours;
+  byte minutes;
+  byte week_days;
+};
+
+/* array with all alarms */
+alarm_info alarms[MAX_ALARMS];
 
 /*==============================================================================
  * FUNCTIONS
@@ -743,6 +762,32 @@ void sysexCallback(byte command, byte argc, byte *argv)
 #endif
       DEBUG_PRINTLN( "SERIAL_MESSAGE" );
       break;
+    case ALARM_SET:
+      if (argc > 3) {
+        int idx = argv[0];
+        if (idx < MAX_ALARMS) {
+          alarms[idx].hours = argv[1];
+          alarms[idx].minutes = argv[2];
+          alarms[idx].week_days = argv[3];
+        }
+      }
+      DEBUG_PRINTLN( "ALARM_SET" );
+      break;
+    case ALARMS_QUERY:
+      Firmata.write(START_SYSEX);
+      Firmata.write(ALARMS_REPLY);
+      for (byte i = 0; i < MAX_ALARMS; i++) {
+        Firmata.write((byte)(alarms[i].hours & 0x7F));
+        Firmata.write((byte)(alarms[i].minutes & 0x7F));
+        Firmata.write((byte)(alarms[i].week_days & 0x7F));
+      }
+      Firmata.write(END_SYSEX);
+      DEBUG_PRINTLN( "ALARMS_QUERY" );
+      break;
+    case DATE_STRING_REQUEST:
+      Firmata.sendString("current time string");
+      DEBUG_PRINTLN( "DATE_STRING_REQUEST" );
+      break;
   }
 }
 
@@ -967,6 +1012,13 @@ void setup()
 #endif
       Firmata.setPinMode(i, PIN_MODE_IGNORE);
     }
+  }
+
+  // Set all alarms to off at startup
+  for (byte i = 0; i < MAX_ALARMS; i++) {
+    alarms[i].hours     = 0;
+    alarms[i].minutes   = 0;
+    alarms[i].week_days = 0; // disabled all 7 days of the week
   }
 
   //Set up controls for the Arduino WiFi Shield SS for the SD Card
